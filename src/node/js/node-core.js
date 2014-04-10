@@ -247,6 +247,17 @@ Y_Node.importMethod = function(host, name, altName) {
  * @for YUI
  */
 
+Y_Node.getCachedNode = function (node) {
+    node._yuiNodes = node._yuiNodes || {};
+    return node._yuiNodes[Y.id];
+};
+
+Y_Node.cacheNode = function (yuiNode) {
+    var domNode = yuiNode._node;
+    domNode._yuiNodes = domNode._yuiNodes || {};
+    domNode._yuiNodes[Y.id] = yuiNode;
+};
+
 /**
  * Returns a single Node instance bound to the node or the
  * first element matching the given selector. Returns null if no match found.
@@ -275,12 +286,12 @@ Y_Node.one = function(node) {
 
         if (node.nodeType || Y.DOM.isWindow(node)) { // avoid bad input (numbers, boolean, etc)
             uid = (node.uniqueID && node.nodeType !== 9) ? node.uniqueID : node._yuid;
-            instance = node._yuiNode; // reuse exising instances
+            instance = Y_Node.getCachedNode(node); // reuse exising instances
             cachedNode = instance ? instance._node : null;
             if (!instance || (cachedNode && node !== cachedNode)) { // new Node when nodes don't match
                 instance = new Y_Node(node);
                 if (node.nodeType != 11) { // dont cache document fragment
-                    node._yuiNode = instance;
+                    Y_Node.cacheNode(instance);
                 }
             }
         }
@@ -732,7 +743,7 @@ Y.mix(Y_Node.prototype, {
 
         if (recursive) {
             Y.NodeList.each(this.all('*'), function(node) {
-                instance = node._yuiNode;
+                instance = Y_Node.getCachedNode(node);
                 if (instance) {
                    instance.destroy();
                 } else { // purge in case added by other means
@@ -741,7 +752,9 @@ Y.mix(Y_Node.prototype, {
             });
         }
 
-        this._node._yuiNode = null;
+        if (this._node._yuiNodes) {
+            this._node._yuiNodes[Y.id] = null;
+        }
         this._node = null;
         this._stateProxy = null;
 
