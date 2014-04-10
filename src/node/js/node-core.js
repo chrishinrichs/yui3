@@ -46,10 +46,6 @@ var DOT = '.',
 
         var uid = (node.nodeType !== 9) ? node.uniqueID : node[UID];
 
-        if (uid && Y_Node._instances[uid] && Y_Node._instances[uid]._node !== node) {
-            node[UID] = null; // unset existing uid to prevent collision (via clone or hack)
-        }
-
         uid = uid || Y.stamp(node);
         if (!uid) { // stamp failed; likely IE non-HTMLElement
             uid = Y.guid();
@@ -122,15 +118,6 @@ Y_Node.re_aria = /^(?:role$|aria-)/;
 Y_Node.SHOW_TRANSITION = 'fadeIn';
 Y_Node.HIDE_TRANSITION = 'fadeOut';
 
-/**
- * A list of Node instances that have been created
- * @private
- * @type Object
- * @property _instances
- * @static
- *
- */
-Y_Node._instances = {};
 
 /**
  * Retrieves the DOM node bound to a Node instance
@@ -288,12 +275,12 @@ Y_Node.one = function(node) {
 
         if (node.nodeType || Y.DOM.isWindow(node)) { // avoid bad input (numbers, boolean, etc)
             uid = (node.uniqueID && node.nodeType !== 9) ? node.uniqueID : node._yuid;
-            instance = Y_Node._instances[uid]; // reuse exising instances
+            instance = node._yuiNode; // reuse exising instances
             cachedNode = instance ? instance._node : null;
             if (!instance || (cachedNode && node !== cachedNode)) { // new Node when nodes don't match
                 instance = new Y_Node(node);
                 if (node.nodeType != 11) { // dont cache document fragment
-                    Y_Node._instances[instance[UID]] = instance; // cache node
+                    node._yuiNode = instance;
                 }
             }
         }
@@ -745,7 +732,7 @@ Y.mix(Y_Node.prototype, {
 
         if (recursive) {
             Y.NodeList.each(this.all('*'), function(node) {
-                instance = Y_Node._instances[node[UID]];
+                instance = node._yuiNode;
                 if (instance) {
                    instance.destroy();
                 } else { // purge in case added by other means
@@ -754,10 +741,10 @@ Y.mix(Y_Node.prototype, {
             });
         }
 
+        this._node._yuiNode = null;
         this._node = null;
         this._stateProxy = null;
 
-        delete Y_Node._instances[this._yuid];
     },
 
     /**
